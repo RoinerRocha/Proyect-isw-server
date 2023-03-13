@@ -13,7 +13,7 @@ const Player = require("./models/player");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "InashhdahAFgasfFGAS()qf1233fahg|";
+const JWT_SECRET = "Qwertyuiopasdfghjkl()ñzxcvbnm[]qwsasdñlkmsdlsñldfkl";
 
 const {
   base64decode
@@ -84,13 +84,13 @@ app.use(cors({
   }
 });*/
 const User = mongoose.model("users");
-app.post("/user", async (req, res) => {
-  const { fname, lname, email, password } = req.body;
+app.post("/user", async (req, res)=>{
+  const {fname, lname, email, password} = req.body;
   const encryptedPassword = await bcrypt.hash(password, 10);
   try {
-    const oldUser = await User.findOne({ email });
-    if (oldUser) {
-      return res.json({ error: "User Exist" });
+    const oldUser = await User.findOne({email});
+    if(oldUser){
+      return res.json({error: "User Exist"});
     }
     await User.create({
       fname,
@@ -98,28 +98,28 @@ app.post("/user", async (req, res) => {
       email,
       password: encryptedPassword,
     });
-    res.send({ status: "ok" });
-  } catch (error) {
-    res.send({ status: "error" });
+    res.send({status: "ok"});
+  }catch(error) {
+    res.send({status: "error"});
   }
 });
 
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.json({ error: "User Dont Exist" })
-  }
-  if (await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({}, JWT_SECRET);
-
-    if (res.status(201)) {
-      return res.json({ status: "ok", data: token });
-    } else {
-      return res.json({ status: "error" });
+app.post("/login", async (req, res)=>{
+    const { email, password } = req.body;
+    const user = await User.findOne({email});
+    if(!user){
+      return res.json({error: "User Not Found" });
     }
-  }
-  res.json({ status: "error", error: "invalid password" });
+    if (await bcrypt.compare(password, user.password)){
+      const token = jwt.sign({}, JWT_SECRET);
+
+      if(res.status(201)){
+        return res.json({status: "ok", data: token});
+      }else{
+        return res.json({status: "error"});
+      }
+    }
+    res.json({status: "error", error: "invalid password"});
 });
 
 
@@ -147,7 +147,7 @@ app.put("/:name", async (req, resp) => {
   const data = await dbConnect();
   let result = data.updateOne(
     { name: req.params.name },
-    { $set: req.body }
+    { $set: req.body  }
   )
   resp.send({ status: "updated" })
 })
@@ -160,58 +160,58 @@ app.post('/players', function (req, res) {
 
   //find the team
   console.log('team:', req.body.team);
-  TeamModel.model.findById(req.body.team, (error, teamFound) => {
-    console.log('error:', error);
+  TeamModel.model.findById(req.body.team, (error,teamFound) => {
+    console.log('error:',error);
     console.log('team:', teamFound);
-    if (error) {
+    if(error) {
 
     }
-    if (teamFound) {
-      player.team = teamFound;
-    }
-    if (player.first_name && player.last_name) {
-      player.save(function (err) {
-        if (err) {
-          res.status(422);
-          console.log('error while saving the player', err);
-          res.json({
-            error: 'There was an error saving the player'
+      if (teamFound) {
+        player.team = teamFound;
+      }
+      if (player.first_name && player.last_name) {
+        player.save(function (err) {
+          if (err) {
+            res.status(422);
+            console.log('error while saving the player', err);
+            res.json({
+              error: 'There was an error saving the player'
+            });
+          }
+          res.status(201);//CREATED
+          res.header({
+            'location': `c/?id=${player.id}`
           });
-        }
-        res.status(201);//CREATED
-        res.header({
-          'location': `c/?id=${player.id}`
+          res.json(player);
         });
-        res.json(player);
-      });
-    } else {
-      res.status(422);
-      console.log('error while saving the player')
-      res.json({
-        error: 'No valid data provided for player'
-      });
-    }
+      } else {
+        res.status(422);
+        console.log('error while saving the player')
+        res.json({
+          error: 'No valid data provided for player'
+        });
+      }
   });
 
 });
-app.get('/players', async (res, resp) => {
+app.get('/players', async(res,resp)=>{
   let data = await dbConnect2();
   data = await data.find().toArray();
   resp.send(data);
 })
 
-app.delete("/players/:id", async (req, resp) => {
+app.delete("/players/:id",async(req, resp)=>{
   console.log(req.params.id);
   const data = await dbConnect2();
-  const result = await data.deleteOne({ _id: new mongodbp.ObjectId(req.params.id) })
-  resp.send(result)
+  const result = await data.deleteOne({_id : new  mongodbp.ObjectId(req.params.id)})
+    resp.send(result)
 })
 app.put("/players/:first_name", async (req, resp) => {
   console.log(req.body);
   const data = await dbConnect2();
   let result = data.updateOne(
     { name: req.params.name },
-    { $set: req.body }
+    { $set: req.body  }
   )
   resp.send({ status: "uptaded" })
 })

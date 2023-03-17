@@ -7,9 +7,9 @@ const dbConnect2 = require('./mongodbp');
 const mongodb = require('mongodb');
 const mongodbp = require('mongodb');
 const bodyParser = require("body-parser");
-const Task = require("./tasksModel");
+const Category = require("./models/category");
+const NewSource = require("./models/newSource");
 const Person = require("./models/user");
-const Player = require("./models/player");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
@@ -50,26 +50,59 @@ app.use(cors({
     error: "Unauthorized"
   });
 });*/
-/*app.post('/user', function (req, res) {
 
+/*app.post("/user", async (req, res) => {
+  const { fname, lname, email, password } = req.body;
+  const encryptedPassword = await bcrypt.hash(password, 10);
+  try {
+    const oldUser =  await User.findOne({ email });
+    if (oldUser) {
+      res.status(409);
+      return res.json({ error: "User Exist" });
+    }
+    User.create({
+      fname: fname,
+      lname: lname,
+      email: email,
+      password: encryptedPassword,
+    });
+    res.header({
+      'location': `http://localhost:5000/user/?id=${User._id}`
+    });
+    res.status(201).json(User);
+  } catch (error) {
+    res.status(422);
+    res.send({ status: "error" });
+  }
+});*/
+
+//register user
+app.post('/user', async (req, res) => {
+  const User = mongoose.model("users");
   const person = new Person.model();
+  const encryptedPassword = await bcrypt.hash(req.body.password, 10);
+  const emailSearch = req.body.email;
 
-
-  person.name = req.body.name;
-  person.last_name = req.body.last_name;
+  person.fname = req.body.fname;
+  person.lname = req.body.lname;
   person.email = req.body.email;
-  person.password = req.body.password;
+  person.password = encryptedPassword;
 
-  if (person.name && person.last_name) {
+  if (person.fname && person.email) {
+    const oldUser = await User.findOne({email: emailSearch});
+    if (oldUser) {
+      console.log(emailSearch);
+      res.status(409);
+      return res.json({ error: "User Exist" });
+    }
     person.save(function (err) {
       if (err) {
         res.status(422);
-        console.log('error while saving the person', err);
         res.json({
-          error: 'There was an error saving the person'
+          error: 'There was an error saving the user'
         });
       }
-      res.status(201);//CREATED
+      res.status(201);
       res.header({
         'location': `http://localhost:5000/user/?id=${person.id}`
       });
@@ -77,77 +110,212 @@ app.use(cors({
     });
   } else {
     res.status(422);
-    console.log('error while saving the person')
+    console.log('error while saving the user')
     res.json({
-      error: 'No valid data provided for person'
+      error: 'No valid data provided for user'
     });
   }
-});*/
+});
+
+//authenticate user.
 const User = mongoose.model("users");
-app.post("/user", async (req, res)=>{
-  const {fname, lname, email, password} = req.body;
-  const encryptedPassword = await bcrypt.hash(password, 10);
-  try {
-    const oldUser = await User.findOne({email});
-    if(oldUser){
-      return res.json({error: "User Exist"});
+
+app.post("/session", async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.json({ error: "User Not Found" });
+  }
+  if (await bcrypt.compare(password, user.password)) {
+    console.log("ssss");
+    const Token = jwt.sign({ email: user.email }, JWT_SECRET);
+
+    if (res.status(201)) {
+      return res.json({ status: "ok", data: Token });
+    } else {
+      return res.json({ status: "Error" });
     }
-    await User.create({
-      fname,
-      lname,
-      email,
-      password: encryptedPassword,
+  }
+  res.json({ status: "error", error: "Invalid password" });
+});
+
+app.post("/userData", async (req, res) => {
+  console.log("papas");
+  const { token } = req.body;
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    console.log(user);
+    const usermail = user.email;
+    User.findOne({ email: usermail }).then((data) => {
+      res.send({ status: "ok", data: data });
+    }).catch((error) => {
+      res.send({ status: "error", data: data });
     });
-    res.send({status: "ok"});
-  }catch(error) {
-    res.send({status: "error"});
+  } catch (error) { }
+});
+
+//post new category
+app.post('/category', async (req, res) => {
+  const cat = mongoose.model("categories");
+  const category = new Category.model();
+
+  category.name = req.body.name;
+
+  if (category.name) {
+    const check = await cat.findOne({name:req.body.name});
+    if (check) {
+      res.status(409);
+      return res.json({ error: "Category already exist" });
+    }
+    category.save(function (err) {
+      if (err) {
+        res.status(422);
+        res.json({
+          error: 'There was an error saving the category'
+        });
+      }
+      res.status(201);//CREATED
+      res.header({
+        'location': `http://localhost:5000/category/?id=${category.id}`
+      });
+      res.json(category);
+    });
+  } else {
+    res.status(422);
+    res.json({
+      error: 'No valid data provided'
+    });
   }
 });
 
-app.post("/login", async (req, res)=>{
-    const { email, password } = req.body;
-    const user = await User.findOne({email});
-    if(!user){
-      return res.json({error: "User Not Found" });
+//delete category by id
+app.delete('/category/:id', (req, res) => {
+  const Category = mongoose.model("categories");
+  const {id} = req.params;
+  console.log(req.params);
+  Category.findByIdAndDelete(id, function (err, docs) {
+    if (err){
+        res.status(404);
+        res.json({error: 'Data not found'});
     }
-    if (await bcrypt.compare(password, user.password)){
-      const token = jwt.sign({}, JWT_SECRET);
+    else{
+      res.status(200);
+      res.json();
+    }
+  })
+});
 
-      if(res.status(201)){
-        return res.json({status: "ok", data: token});
-      }else{
-        return res.json({status: "error"});
+//delete category by name
+app.delete('/category2/:name', (req, res) => {
+  const Category = mongoose.model("categories");
+  const {name} = req.params;
+
+  Category.findOneAndDelete({name: name}, function (err, docs) {
+    if (err){
+        res.status(404);
+        res.json({error: 'Data not found'});
+    }
+    else{
+      res.status(200);
+      res.json();
+    }
+  })
+});
+
+//update categories
+app.put('/category/:id', (req, res) => {
+  const Category = mongoose.model("categories");
+  const {id} = req.params;
+  const name = req.body.name;
+
+  Category.findByIdAndUpdate(id,{name: name},  function (err, docs) {
+    if (err){
+        res.status(404);
+        res.json({error: 'Data not found'});
+    }
+    else{
+      res.status(200);
+      res.json();
+    }
+  })
+});
+
+//get category by name
+app.get('/category/:name', async (req, res) => {
+  const Category = mongoose.model("categories");
+  const {name} = req.params;
+
+  try{
+    const cat = await Category.findOne({name: name})
+    res.json(cat);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
+
+//get all categories
+app.get('/category', async (req, res) => {
+  const Category = mongoose.model("categories");
+
+  try{
+    const cat = await Category.find();
+    res.json(cat);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
+
+//post news source
+app.post('/newsource', async (req, res) => {
+  const newSource = mongoose.model("newSources");
+  const Category = mongoose.model("categories");
+  const User = mongoose.model("users");
+  const source = new NewSource.model();
+
+  source.url = req.body.url;
+  source.name = req.body.name;
+  source.user_id = req.body.user_id;
+  source.category_id = req.body.category_id;
+
+  if (source.user_id && source.category_id) {
+    const check = await User.findOne({_id: req.body.user_id});
+    const check2 = await Category.findOne({_id: req.body.category_id});
+
+    if (!check || !check2) {
+      res.status(409);
+      return res.json({ error: "There was an error" });
+    }
+    source.save(function (err) {
+      if (err) {
+        res.status(422);
+        res.json({
+          error: 'There was an error saving the category'
+        });
       }
-    }
-    res.json({status: "error", error: "invalid password"});
+      res.status(201);//CREATED
+      res.header({
+        'location': `http://localhost:5000/category/?id=${source.id}`
+      });
+      res.json(source);
+    });
+  } else {
+    res.status(422);
+    res.json({
+      error: 'No valid data provided'
+    });
+  }
 });
 
-
-app.get('/tipocambio', function (req, res) {
-  res.send(`{
-    "TipoCompraDolares" : "608",
-    "TipoVentaDolares" : "621",
-    "TipoCompraEuros" : "731.85",
-    "TipoVentaEuros" : "761.9"
-  }`);
-});
-
-
-
-
-app.delete("/:id", async (req, resp) => {
-  console.log(req.params.id);
-  const data = await dbConnect();
-  const result = await data.deleteOne({ _id: new mongodb.ObjectId(req.params.id) })
-  resp.send(result)
-})
-
-app.put("/:name", async (req, resp) => {
+/*app.put("/:name", async (req, resp) => {
   console.log(req.body);
   const data = await dbConnect();
   let result = data.updateOne(
     { name: req.params.name },
-    { $set: req.body  }
+    { $set: req.body }
   )
   resp.send({ status: "updated" })
 })
@@ -160,61 +328,63 @@ app.post('/players', function (req, res) {
 
   //find the team
   console.log('team:', req.body.team);
-  TeamModel.model.findById(req.body.team, (error,teamFound) => {
-    console.log('error:',error);
+  TeamModel.model.findById(req.body.team, (error, teamFound) => {
+    console.log('error:', error);
     console.log('team:', teamFound);
-    if(error) {
+    if (error) {
 
     }
-      if (teamFound) {
-        player.team = teamFound;
-      }
-      if (player.first_name && player.last_name) {
-        player.save(function (err) {
-          if (err) {
-            res.status(422);
-            console.log('error while saving the player', err);
-            res.json({
-              error: 'There was an error saving the player'
-            });
-          }
-          res.status(201);//CREATED
-          res.header({
-            'location': `c/?id=${player.id}`
+    if (teamFound) {
+      player.team = teamFound;
+    }
+    if (player.first_name && player.last_name) {
+      player.save(function (err) {
+        if (err) {
+          res.status(422);
+          console.log('error while saving the player', err);
+          res.json({
+            error: 'There was an error saving the player'
           });
-          res.json(player);
+        }
+        res.status(201);//CREATED
+        res.header({
+          'location': `c/?id=${player.id}`
         });
-      } else {
-        res.status(422);
-        console.log('error while saving the player')
-        res.json({
-          error: 'No valid data provided for player'
-        });
-      }
+        res.json(player);
+      });
+    } else {
+      res.status(422);
+      console.log('error while saving the player')
+      res.json({
+        error: 'No valid data provided for player'
+      });
+    }
   });
 
 });
-app.get('/players', async(res,resp)=>{
+
+app.get('/players', async (res, resp) => {
   let data = await dbConnect2();
   data = await data.find().toArray();
   resp.send(data);
 })
 
-app.delete("/players/:id",async(req, resp)=>{
+app.delete("/players/:id", async (req, resp) => {
   console.log(req.params.id);
   const data = await dbConnect2();
-  const result = await data.deleteOne({_id : new  mongodbp.ObjectId(req.params.id)})
-    resp.send(result)
+  const result = await data.deleteOne({ _id: new mongodbp.ObjectId(req.params.id) })
+  resp.send(result)
 })
+
 app.put("/players/:first_name", async (req, resp) => {
   console.log(req.body);
   const data = await dbConnect2();
   let result = data.updateOne(
     { name: req.params.name },
-    { $set: req.body  }
+    { $set: req.body }
   )
   resp.send({ status: "uptaded" })
-})
+})*/
 
 
 app.listen(5000, () => console.log(`Example app listening on port 5000!`))

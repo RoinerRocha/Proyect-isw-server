@@ -2,12 +2,7 @@ const express = require('express');
 const cors = require("cors");
 const mongoose = require("mongoose");
 const db = mongoose.connect("mongodb://127.0.0.1:27017/proyecto");
-//const dbConnect = require('./mongodb');
-//const dbConnect2 = require('./mongodbp');
-//const mongodb = require('mongodb');
-//const mongodbp = require('mongodb');
 const bodyParser = require("body-parser");
-const fs = require("fs");
 const Parser = require("rss-parser");
 const Category = require("./models/category");
 const NewSource = require("./models/newSource");
@@ -399,144 +394,68 @@ app.get('/newsource', async (req, res) => {
 app.post('/newsource/:id/process', async (req, res) => {
   //RSS Parser
   const parser = new Parser();
-  const NewsM = mongoose.model("news");
   const NewSource = mongoose.model("newSources");
   const {id} = req.params;
 
   // Get all the items in the RSS feed
-  const feed = await parser.parseURL("https://feeds.feedburner.com/crhoy/wSjk");
-  const source = await NewSource.findOne({user_id: id});
+  const source = await NewSource.find({user_id: id});
+  console.log(source);
+  const out = [];
   
   if(source){
-    feed.items.forEach(async element => {
-      const news = new News.model();
-      news.title = element.title,
-      news.short_description = element.contentSnippet,
-      news.permalink = element.link,
-      news.date = element.isoDate,
-      news.news_sources_id = source.id,
-      news.user_id = source.user_id,
-      news.category_id = source.category_id
-      console.log(news);
-  
-      await news.save();
+    source.forEach(async element => {
+      const feed = await parser.parseURL(element.url);
+      feed.items.forEach(async element => {
+        const news = new News.model();
+        news.title = element.title,
+        news.short_description = element.contentSnippet,
+        news.permalink = element.link,
+        news.date = element.isoDate,
+        news.news_sources_id = source.id,
+        news.user_id = source.user_id,
+        news.category_id = source.category_id
+    
+        await news.save();
+        await out.push(element);
+      });
     });
   }else{
     res.status(404);
     res.json("Not found");
   }
-  
-  
-  res.json(feed);
+  res.json({out});
 });
 
-///get news from the rss
-/*app.post('/newsource/:id/process', async (req, res) => {
+//get all news by user id
+app.get('/news/:id', async (req, res) => {
+  const News = mongoose.model("news");
+  const {id} = req.params.id;
 
-  if (source.user_id && source.category_id) {
-    const check = await User.findOne({_id: req.body.user_id});
-    const check2 = await Category.findOne({_id: req.body.category_id});
+  try{
+    const news = await News.find({user_id: id});
+    res.json(news);
 
-    if (!check || !check2) {
-      res.status(409);
-      return res.json({ error: "There was an error" });
-    }
-    source.save(function (err) {
-      if (err) {
-        res.status(422);
-        res.json({
-          error: 'There was an error saving the category'
-        });
-      }
-      res.status(201);//CREATED
-      res.header({
-        'location': `http://localhost:5000/category/?id=${source.id}`
-      });
-      res.json(source);
-    });
-  } else {
-    res.status(422);
-    res.json({
-      error: 'No valid data provided'
-    });
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
   }
-});*/
-
-/*app.put("/:name", async (req, resp) => {
-  console.log(req.body);
-  const data = await dbConnect();
-  let result = data.updateOne(
-    { name: req.params.name },
-    { $set: req.body }
-  )
-  resp.send({ status: "updated" })
-})
-
-app.post('/players', function (req, res) {
-  const player = new Player.model();
-  player.first_name = req.body.first_name;
-  player.last_name = req.body.last_name;
-  player.age = req.body.age;
-
-  //find the team
-  console.log('team:', req.body.team);
-  TeamModel.model.findById(req.body.team, (error, teamFound) => {
-    console.log('error:', error);
-    console.log('team:', teamFound);
-    if (error) {
-
-    }
-    if (teamFound) {
-      player.team = teamFound;
-    }
-    if (player.first_name && player.last_name) {
-      player.save(function (err) {
-        if (err) {
-          res.status(422);
-          console.log('error while saving the player', err);
-          res.json({
-            error: 'There was an error saving the player'
-          });
-        }
-        res.status(201);//CREATED
-        res.header({
-          'location': `c/?id=${player.id}`
-        });
-        res.json(player);
-      });
-    } else {
-      res.status(422);
-      console.log('error while saving the player')
-      res.json({
-        error: 'No valid data provided for player'
-      });
-    }
-  });
-
 });
 
-app.get('/players', async (res, resp) => {
-  let data = await dbConnect2();
-  data = await data.find().toArray();
-  resp.send(data);
-})
+//get all news by user id and category
+app.get('/news/:id?category=category_id', async (req, res) => {
+  const News = mongoose.model("news");
+  const {id} = req.params.id;
+  const {cat_id} = req.query;
 
-app.delete("/players/:id", async (req, resp) => {
-  console.log(req.params.id);
-  const data = await dbConnect2();
-  const result = await data.deleteOne({ _id: new mongodbp.ObjectId(req.params.id) })
-  resp.send(result)
-})
+  try{
+    const news = await News.find({user_id: id, category_id: cat_id});
+    console.log();
+    res.json(news);
 
-app.put("/players/:first_name", async (req, resp) => {
-  console.log(req.body);
-  const data = await dbConnect2();
-  let result = data.updateOne(
-    { name: req.params.name },
-    { $set: req.body }
-  )
-  resp.send({ status: "uptaded" })
-})*/
-
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
 
 app.listen(5000, () => console.log(`Example app listening on port 5000!`))

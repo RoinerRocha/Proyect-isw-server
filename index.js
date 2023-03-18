@@ -403,17 +403,17 @@ app.post('/newsource/:id/process', async (req, res) => {
   const out = [];
   
   if(source){
-    source.forEach(async element => {
-      const feed = await parser.parseURL(element.url);
+    source.forEach(async elementN => {
+      const feed = await parser.parseURL(elementN.url);
       feed.items.forEach(async element => {
         const news = new News.model();
         news.title = element.title,
         news.short_description = element.contentSnippet,
         news.permalink = element.link,
         news.date = element.isoDate,
-        news.news_sources_id = source.id,
-        news.user_id = source.user_id,
-        news.category_id = source.category_id
+        news.news_sources_id = elementN.id,
+        news.user_id = elementN.user_id,
+        news.category_id = elementN.category_id
     
         await news.save();
         await out.push(element);
@@ -429,7 +429,7 @@ app.post('/newsource/:id/process', async (req, res) => {
 //get all news by user id
 app.get('/news/:id', async (req, res) => {
   const News = mongoose.model("news");
-  const {id} = req.params.id;
+  const {id} = req.params;
 
   try{
     const news = await News.find({user_id: id});
@@ -442,14 +442,13 @@ app.get('/news/:id', async (req, res) => {
 });
 
 //get all news by user id and category
-app.get('/news/:id?category=category_id', async (req, res) => {
+app.get('/newss/:id/:cat', async (req, res) => {
   const News = mongoose.model("news");
-  const {id} = req.params.id;
-  const {cat_id} = req.query;
+  const id = req.params.id;
+  const cat = req.params.cat;
 
   try{
-    const news = await News.find({user_id: id, category_id: cat_id});
-    console.log();
+    const news = await News.find({user_id: id, category_id: cat});
     res.json(news);
 
   }catch (error){

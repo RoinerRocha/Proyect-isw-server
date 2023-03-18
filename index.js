@@ -2,13 +2,16 @@ const express = require('express');
 const cors = require("cors");
 const mongoose = require("mongoose");
 const db = mongoose.connect("mongodb://127.0.0.1:27017/proyecto");
-const dbConnect = require('./mongodb');
-const dbConnect2 = require('./mongodbp');
-const mongodb = require('mongodb');
-const mongodbp = require('mongodb');
+//const dbConnect = require('./mongodb');
+//const dbConnect2 = require('./mongodbp');
+//const mongodb = require('mongodb');
+//const mongodbp = require('mongodb');
 const bodyParser = require("body-parser");
+const fs = require("fs");
+const Parser = require("rss-parser");
 const Category = require("./models/category");
 const NewSource = require("./models/newSource");
+const News = require("./models/news");
 const Person = require("./models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -192,7 +195,7 @@ app.post('/category', async (req, res) => {
 app.delete('/category/:id', (req, res) => {
   const Category = mongoose.model("categories");
   const {id} = req.params;
-  console.log(req.params);
+
   Category.findByIdAndDelete(id, function (err, docs) {
     if (err){
         res.status(404);
@@ -241,12 +244,27 @@ app.put('/category/:id', (req, res) => {
 });
 
 //get category by name
-app.get('/category/:name', async (req, res) => {
+app.get('/category2/:name', async (req, res) => {
   const Category = mongoose.model("categories");
   const {name} = req.params;
 
   try{
     const cat = await Category.findOne({name: name})
+    res.json(cat);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
+
+//get category by id
+app.get('/category/:id', async (req, res) => {
+  const Category = mongoose.model("categories");
+  const {id} = req.params;
+
+  try{
+    const cat = await Category.findById(id)
     res.json(cat);
 
   }catch (error){
@@ -271,7 +289,6 @@ app.get('/category', async (req, res) => {
 
 //post news source
 app.post('/newsource', async (req, res) => {
-  const newSource = mongoose.model("newSources");
   const Category = mongoose.model("categories");
   const User = mongoose.model("users");
   const source = new NewSource.model();
@@ -309,6 +326,141 @@ app.post('/newsource', async (req, res) => {
     });
   }
 });
+
+//delete category by id
+app.delete('/newsource/:id', (req, res) => {
+  const NewSource = mongoose.model("newSources");
+  const {id} = req.params;
+
+  NewSource.findByIdAndDelete(id, function (err, docs) {
+    if (err){
+        res.status(404);
+        res.json({error: 'Data not found'});
+    }
+    else{
+      res.status(200);
+      res.json();
+    }
+  })
+});
+
+//update new sources
+app.put('/newsource/:id', (req, res) => {
+  const NewSource = mongoose.model("newSources");
+  const {id} = req.params;
+  const url = req.body.url;
+  const name = req.body.name;
+  const user_id = req.body.user_id;
+  const category_id = req.body.category_id;
+
+  NewSource.findByIdAndUpdate(id,{url: url, name: name, user_id: user_id, category_id: category_id}, function (err, docs) {
+    //const s = await Category.find();
+    if (err){
+        res.status(404);
+        res.json({error: 'Data not found'});
+    }
+    else{
+      res.status(200);
+      res.json();
+    }
+  })
+});
+
+//get news source by id
+app.get('/newsource/:id', async (req, res) => {
+  const NewSource = mongoose.model("newSources");
+  const {id} = req.params;
+
+  try{
+    const source = await NewSource.findById(id)
+    res.json(source);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
+
+//get all news sources
+app.get('/newsource', async (req, res) => {
+  const NewSource = mongoose.model("newSources");
+
+  try{
+    const source = await NewSource.find()
+    res.json(source);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
+});
+
+//Read the RSS and insert the news associated to the owner of the newsource 
+app.post('/newsource/:id/process', async (req, res) => {
+  //RSS Parser
+  const parser = new Parser();
+  const NewsM = mongoose.model("news");
+  const NewSource = mongoose.model("newSources");
+  const {id} = req.params;
+
+  // Get all the items in the RSS feed
+  const feed = await parser.parseURL("https://feeds.feedburner.com/crhoy/wSjk");
+  const source = await NewSource.findOne({user_id: id});
+  
+  if(source){
+    feed.items.forEach(async element => {
+      const news = new News.model();
+      news.title = element.title,
+      news.short_description = element.contentSnippet,
+      news.permalink = element.link,
+      news.date = element.isoDate,
+      news.news_sources_id = source.id,
+      news.user_id = source.user_id,
+      news.category_id = source.category_id
+      console.log(news);
+  
+      await news.save();
+    });
+  }else{
+    res.status(404);
+    res.json("Not found");
+  }
+  
+  
+  res.json(feed);
+});
+
+///get news from the rss
+/*app.post('/newsource/:id/process', async (req, res) => {
+
+  if (source.user_id && source.category_id) {
+    const check = await User.findOne({_id: req.body.user_id});
+    const check2 = await Category.findOne({_id: req.body.category_id});
+
+    if (!check || !check2) {
+      res.status(409);
+      return res.json({ error: "There was an error" });
+    }
+    source.save(function (err) {
+      if (err) {
+        res.status(422);
+        res.json({
+          error: 'There was an error saving the category'
+        });
+      }
+      res.status(201);//CREATED
+      res.header({
+        'location': `http://localhost:5000/category/?id=${source.id}`
+      });
+      res.json(source);
+    });
+  } else {
+    res.status(422);
+    res.json({
+      error: 'No valid data provided'
+    });
+  }
+});*/
 
 /*app.put("/:name", async (req, resp) => {
   console.log(req.body);

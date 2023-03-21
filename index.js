@@ -49,28 +49,43 @@ app.use(cors({
   });
 });*/
 
-/*app.post("/user", async (req, res) => {
-  const { fname, lname, email, password } = req.body;
-  const encryptedPassword = await bcrypt.hash(password, 10);
-  try {
-    const oldUser =  await User.findOne({ email });
-    if (oldUser) {
-      res.status(409);
-      return res.json({ error: "User Exist" });
+//token authorization
+/*app.use(function (req, res, next) {
+  if (req.headers["authorization"]) {
+    const token = req.headers['authorization'].split(' ')[1];
+    try {
+      //validate if token exists in the database
+      const session = getSession(token);
+      session.then(function (session) {
+        if (session) {
+          next();
+          return;
+        } else {
+          res.status(401);
+          res.send({
+            error: "Unauthorized "
+          });
+        }
+      })
+      .catch(function(err){
+        console.log('there was an error getting the session', err);
+        res.status(422);
+        res.send({
+          error: "There was an error: " + e.message
+        });
+      });
+
+    } catch (e) {
+      res.status(422);
+      res.send({
+        error: "There was an error: " + e.message
+      });
     }
-    User.create({
-      fname: fname,
-      lname: lname,
-      email: email,
-      password: encryptedPassword,
+  } else {
+    res.status(401);
+    res.send({
+      error: "Unauthorized "
     });
-    res.header({
-      'location': `http://localhost:5000/user/?id=${User._id}`
-    });
-    res.status(201).json(User);
-  } catch (error) {
-    res.status(422);
-    res.send({ status: "error" });
   }
 });*/
 
@@ -85,6 +100,7 @@ app.post('/user', async (req, res) => {
   person.lname = req.body.lname;
   person.email = req.body.email;
   person.password = encryptedPassword;
+  person.role = req.body.role
 
   if (person.fname && person.email) {
     const oldUser = await User.findOne({email: emailSearch});
@@ -126,7 +142,7 @@ app.post("/session", async (req, res) => {
   }
   if (await bcrypt.compare(password, user.password)) {
     console.log("ssss");
-    const Token = jwt.sign({ email: user.email }, JWT_SECRET);
+    const Token = jwt.sign({ email: user.email, role: user.role,id: user.id }, JWT_SECRET);
 
     if (res.status(201)) {
       return res.json({ status: "ok", data: Token });
@@ -135,6 +151,19 @@ app.post("/session", async (req, res) => {
     }
   }
   res.json({ status: "error", error: "Invalid password" });
+});
+
+app.get('/checktoken', async (req, res) => {
+  const token = req.body.token;
+
+  try{
+    const data = jwt.decode(token)
+    res.json(data);
+
+  }catch (error){
+    res.status(422)
+    res.json({error: "There was an error"})
+  }
 });
 
 app.post("/userData", async (req, res) => {
@@ -442,7 +471,7 @@ app.get('/news/:id', async (req, res) => {
 });
 
 //get all news by user id and category
-app.get('/newss/:id/:cat', async (req, res) => {
+app.get('/news/:id/:cat', async (req, res) => {
   const News = mongoose.model("news");
   const id = req.params.id;
   const cat = req.params.cat;

@@ -27,68 +27,6 @@ app.use(cors({
   methods: "*"
 }));
 
-/*app.use(function (req, res, next) {
-  if (req.headers["authorization"]) {
-    console.log(req.headers["authorization"]);
-    const authBase64 = req.headers['authorization'].split(' ');
-    console.log('authBase64:', authBase64);
-    const userPass = base64decode(authBase64[1]);
-    console.log('userPass:', userPass);
-    const user = userPass.split(':')[0];
-    const password = userPass.split(':')[1];
-
-    if (user === 'admin' && password == '1234') {
-      // saveSession('admin');
-      next();
-      return;
-    }
-  }
-  res.status(401);
-  res.send({
-    error: "Unauthorized"
-  });
-});*/
-
-//token authorization
-/*app.use(function (req, res, next) {
-  if (req.headers["authorization"]) {
-    const token = req.headers['authorization'].split(' ')[1];
-    try {
-      //validate if token exists in the database
-      const session = getSession(token);
-      session.then(function (session) {
-        if (session) {
-          next();
-          return;
-        } else {
-          res.status(401);
-          res.send({
-            error: "Unauthorized "
-          });
-        }
-      })
-      .catch(function(err){
-        console.log('there was an error getting the session', err);
-        res.status(422);
-        res.send({
-          error: "There was an error: " + e.message
-        });
-      });
-
-    } catch (e) {
-      res.status(422);
-      res.send({
-        error: "There was an error: " + e.message
-      });
-    }
-  } else {
-    res.status(401);
-    res.send({
-      error: "Unauthorized "
-    });
-  }
-});*/
-
 //authorization
 /*app.use(function (req, res, next) {
   if (req.headers["authorization"]) {
@@ -185,21 +123,6 @@ app.get('/checktoken', async (req, res) => {
   }
 });
 
-app.post("/userData", async (req, res) => {
-  console.log("papas");
-  const { token } = req.body;
-  try {
-    const user = jwt.verify(token, JWT_SECRET);
-    console.log(user);
-    const usermail = user.email;
-    User.findOne({ email: usermail }).then((data) => {
-      res.send({ status: "ok", data: data });
-    }).catch((error) => {
-      res.send({ status: "error", data: data });
-    });
-  } catch (error) { }
-});
-
 //post new category
 app.post('/category', async (req, res) => {
   const cat = mongoose.model("categories");
@@ -251,23 +174,6 @@ app.delete('/category/:id', (req, res) => {
   })
 });
 
-//delete category by name
-app.delete('/category2/:name', (req, res) => {
-  const Category = mongoose.model("categories");
-  const {name} = req.params;
-
-  Category.findOneAndDelete({name: name}, function (err, docs) {
-    if (err){
-        res.status(404);
-        res.json({error: 'Data not found'});
-    }
-    else{
-      res.status(200);
-      res.json();
-    }
-  })
-});
-
 //update categories
 app.put('/category/:id', (req, res) => {
   const Category = mongoose.model("categories");
@@ -285,21 +191,6 @@ app.put('/category/:id', (req, res) => {
       res.json(docs);
     }
   })
-});
-
-//get category by name
-app.get('/category2/:name', async (req, res) => {
-  const Category = mongoose.model("categories");
-  const {name} = req.params;
-
-  try{
-    const cat = await Category.findOne({name: name})
-    res.json(cat);
-
-  }catch (error){
-    res.status(422)
-    res.json({error: "There was an error"})
-  }
 });
 
 //get category by id
@@ -371,7 +262,7 @@ app.post('/newsource', async (req, res) => {
   }
 });
 
-//delete category by id
+//delete source by id
 app.delete('/newsource/:id', (req, res) => {
   const NewSource = mongoose.model("newSources");
   const {id} = req.params;
@@ -468,6 +359,7 @@ app.post('/newsource/:id/process', async (req, res) => {
     
         await news.save();
         await out.push(element);
+        console.log(element);
       });
     });
   }else{

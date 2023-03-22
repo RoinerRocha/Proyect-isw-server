@@ -89,6 +89,25 @@ app.use(cors({
   }
 });*/
 
+//authorization
+/*app.use(function (req, res, next) {
+  if (req.headers["authorization"]) {
+    const token = req.headers['authorization'];
+    jwt.verify(token, JWT_SECRET, (err) => {
+      if(err){
+        res.send('Access denied');
+      }else{
+        next();
+      }
+    });
+  }else {
+    res.status(401);
+    res.send({
+      error: "Unauthorized "
+    });
+  }
+});*/
+
 //register user
 app.post('/user', async (req, res) => {
   const User = mongoose.model("users");
@@ -144,7 +163,7 @@ app.post("/session", async (req, res) => {
     console.log("ssss");
     const Token = jwt.sign({ email: user.email, role: user.role,id: user.id }, JWT_SECRET);
 
-    if (res.status(201)) {
+    if (res.status(200)) {
       return res.json({ status: "ok", data: Token });
     } else {
       return res.json({ status: "Error" });
@@ -262,7 +281,8 @@ app.put('/category/:id', (req, res) => {
     }
     else{
       res.status(200);
-      res.json();
+      res.header({'location': `http://localhost:5000/category/?id=${docs.id}`});
+      res.json(docs);
     }
   })
 });
@@ -378,14 +398,14 @@ app.put('/newsource/:id', (req, res) => {
   const category_id = req.body.category_id;
 
   NewSource.findByIdAndUpdate(id,{url: url, name: name, user_id: user_id, category_id: category_id}, function (err, docs) {
-    //const s = await Category.find();
     if (err){
         res.status(404);
         res.json({error: 'Data not found'});
     }
     else{
       res.status(200);
-      res.json();
+      res.header({'location': `http://localhost:5000/category/?id=${docs.id}`});
+      res.json(docs);
     }
   })
 });
@@ -397,6 +417,7 @@ app.get('/newsource/:id', async (req, res) => {
 
   try{
     const source = await NewSource.findById(id)
+    res.status(200)
     res.json(source);
 
   }catch (error){
@@ -411,6 +432,7 @@ app.get('/newsource', async (req, res) => {
 
   try{
     const source = await NewSource.find()
+    res.status(200)
     res.json(source);
 
   }catch (error){
@@ -452,6 +474,7 @@ app.post('/newsource/:id/process', async (req, res) => {
     res.status(404);
     res.json("Not found");
   }
+  res.status(201)
   res.json({out});
 });
 
@@ -462,6 +485,7 @@ app.get('/news/:id', async (req, res) => {
 
   try{
     const news = await News.find({user_id: id});
+    res.status(200)
     res.json(news);
 
   }catch (error){
@@ -478,6 +502,7 @@ app.get('/news/:id/:cat', async (req, res) => {
 
   try{
     const news = await News.find({user_id: id, category_id: cat});
+    res.status(200)
     res.json(news);
 
   }catch (error){

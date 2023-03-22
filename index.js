@@ -416,7 +416,7 @@ app.get('/newsource/:id', async (req, res) => {
   const {id} = req.params;
 
   try{
-    const source = await NewSource.findById(id)
+    const source = await NewSource.find({user_id: id})
     res.status(200)
     res.json(source);
 
